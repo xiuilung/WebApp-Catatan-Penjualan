@@ -1,0 +1,2249 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>wiraniaga</title>
+  <!-- Tailwind CSS untuk styling modern -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & Babel untuk kompilasi in-browser di Apps Script -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  
+  <style>
+    /* Mengatasi scrollbar default */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fadeIn {
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin-custom {
+      animation: spin 1s linear infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 font-sans antialiased">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    // --- Format IDR Helper ---
+    const formatCurrency = (value) => {
+      return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0
+      }).format(value || 0);
+    };
+
+    const generateId = () => Math.random().toString(36).substr(2, 9);
+
+    // --- Inline SVGs ---
+    const IconDashboard = () => (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+    );
+    const IconCart = () => (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+    );
+    const IconTarget = () => (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+    );
+    const IconIntel = () => (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    );
+    const IconDatabase = () => (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>
+    );
+    const IconPlus = () => (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    );
+    const IconEdit = () => (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"/></svg>
+    );
+    const IconTrash = () => (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+    );
+    const IconX = () => (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    );
+    const IconLogout = () => (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+    );
+    const IconTrendingUp = ({ className = "w-5 h-5" }) => (
+      <svg className={className} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>
+    );
+    const IconTrendingDown = ({ className = "w-5 h-5" }) => (
+      <svg className={className} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" /></svg>
+    );
+    const IconMenu = () => (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+    );
+    const IconCalendar = () => (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    );
+    const IconSparkles = () => (
+      <svg className="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707-.707M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>
+    );
+
+    // --- SUB-COMPONENT: MULTI-PURPOSE SALES FORM ---
+    function SalesForm({ currentItem, setCurrentItem, masterArea, masterProduk, updateSalesItem, addSalesItem, removeSalesItem, handleSave }) {
+      return (
+        <form onSubmit={handleSave} className="p-4 md:p-6 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase">Tanggal</label>
+              <input required type="date" className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.tanggal || ''} onChange={e => setCurrentItem({...currentItem, tanggal: e.target.value})}/>
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase">Nama Toko</label>
+              <input required className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.namaToko || ''} onChange={e => setCurrentItem({...currentItem, namaToko: e.target.value})} placeholder="Toko Mitra"/>
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase">Area Distribusi</label>
+            <select required className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.area || ''} onChange={e => setCurrentItem({...currentItem, area: e.target.value})}>
+              {masterArea.map(a => <option key={a.id} value={a.nama}>{a.nama}</option>)}
+            </select>
+          </div>
+
+          <div className="border-t pt-4 space-y-3">
+            <div className="flex justify-between items-center">
+              <h4 className="text-xs font-black text-slate-800">Detail Produk Dibeli</h4>
+              <button type="button" onClick={addSalesItem} className="text-[10px] font-bold text-blue-600 hover:underline">+ Tambah Item</button>
+            </div>
+            {currentItem?.items?.map((item, index) => (
+              <div key={index} className="grid grid-cols-1 gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200 animate-fadeIn">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[9px] font-bold text-slate-400 uppercase">Pilih Produk</label>
+                  <select className="w-full p-2 bg-white border rounded text-[10px] font-bold" value={item.produkId} onChange={e => updateSalesItem(index, 'produkId', e.target.value)}>
+                    {masterProduk.map(p => <option key={p.id} value={p.id}>{p.nama}</option>)}
+                  </select>
+                </div>
+                <div className="flex items-center justify-between gap-4 mt-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">Qty:</span>
+                    <input type="number" min="1" className="w-16 p-1 bg-white border rounded text-[10px] font-bold text-center" value={item.qty} onChange={e => updateSalesItem(index, 'qty', e.target.value)}/>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-emerald-600">{formatCurrency(item.hargaTotal)}</span>
+                    {currentItem.items.length > 1 && (
+                      <button type="button" onClick={() => removeSalesItem(index)} className="text-red-500 hover:bg-red-50 p-1 rounded-full text-base font-bold">×</button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t pt-4 flex justify-between font-black text-slate-800 text-sm">
+            <span>Grand Total</span>
+            <span>{formatCurrency(currentItem?.grandTotal || 0)}</span>
+          </div>
+
+          <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 mt-4 shadow-lg shadow-blue-500/10">Simpan Transaksi</button>
+        </form>
+      );
+    }
+
+    function App() {
+      const [activeTab, setActiveTab] = useState('dashboard');
+      const [isLoading, setIsLoading] = useState(false);
+      const [isModalOpen, setIsModalOpen] = useState(false);
+      const [modalType, setModalType] = useState(''); 
+      const [currentItem, setCurrentItem] = useState(null);
+      const [isSidebarOpen, setIsSidebarOpen] = useState(false); 
+      
+      // Dialog Keamanan & Notifikasi Kustom
+      const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, id: null, type: '' });
+      const [logoutConfirm, setLogoutConfirm] = useState(false);
+      const [customNotification, setCustomNotification] = useState({ isOpen: false, title: '', message: '', type: 'info' });
+
+      // --- Sistem State User & Login ---
+      const [currentUser, setCurrentUser] = useState(null);
+      const [loginUsername, setLoginUsername] = useState('');
+      const [loginPassword, setLoginPassword] = useState('');
+      const [loginError, setLoginError] = useState('');
+
+      // --- Database States ---
+      const [masterProduk, setMasterProduk] = useState([]);
+      const [masterArea, setMasterArea] = useState([]);
+      const [sales, setSales] = useState([]);
+      const [competitors, setCompetitors] = useState([]);
+      const [competitorMedia, setCompetitorMedia] = useState([]); 
+      const [targetQty, setTargetQty] = useState([]);
+      const [targetValue, setTargetValue] = useState([]);
+      const [targetEC, setTargetEC] = useState([]); 
+      const [targetECBrand, setTargetECBrand] = useState([]); 
+
+      // --- Sesi Hari Berjalan Manual ---
+      const [manualCurrentDay, setManualCurrentDay] = useState(4);
+      const [manualTotalDays, setManualTotalDays] = useState(31);
+
+      // --- State Range Tanggal Manual untuk Perbandingan Tren ---
+      const [dateStartA, setDateStartA] = useState('2026-07-01');
+      const [dateEndA, setDateEndA] = useState('2026-07-04');
+      const [dateStartB, setDateStartB] = useState('2026-06-01');
+      const [dateEndB, setDateEndB] = useState('2026-06-30');
+
+      // --- State Rekomendasi Pintar AI Gemini ---
+      const [aiRecommendations, setAiRecommendations] = useState([]);
+      const [isAiLoading, setIsAiLoading] = useState(false);
+
+      const getActualEC = () => {
+        const uniqueStores = new Set(sales.map(s => s.namaToko));
+        return uniqueStores.size;
+      };
+
+      const getActualQty = (produkId) => {
+        return sales.reduce((total, sale) => {
+          const foundItems = sale.items ? sale.items.filter(item => item.produkId === produkId) : [];
+          const sumQty = foundItems.reduce((acc, curr) => acc + Number(curr.qty || 0), 0);
+          return total + sumQty;
+        }, 0);
+      };
+
+      const getActualECBrand = (produkId) => {
+        const uniqueStores = new Set();
+        sales.forEach(sale => {
+          const boughtProduct = sale.items ? sale.items.some(item => item.produkId === produkId) : false;
+          if (boughtProduct) {
+            uniqueStores.add(sale.namaToko);
+          }
+        });
+        return uniqueStores.size;
+      };
+
+      const triggerGASUpdate = (sheetName, data) => {
+        setIsLoading(true);
+        if (typeof google !== 'undefined') {
+          google.script.run
+            .withSuccessHandler((response) => {
+              setIsLoading(false);
+              if (response.success) {
+                showNotification("Berhasil", `Data ${sheetName} berhasil disinkronisasi ke Cloud.`, "success");
+              } else {
+                showNotification("Sinkronisasi Gagal", response.message || "Gagal memperbarui sheet.", "error");
+              }
+            })
+            .withFailureHandler((err) => {
+              setIsLoading(false);
+              showNotification("Koneksi Error", "Koneksi Google Apps Script terputus: " + err, "error");
+            })
+            .saveData(sheetName, data);
+        } else {
+          setIsLoading(false);
+          localStorage.setItem(`salespro_local_${sheetName}`, JSON.stringify(data));
+          showNotification("Demo Mode", `Data ${sheetName} disimpan secara lokal di browser.`, "success");
+        }
+      };
+
+      const handleOpenModal = (type, item = null) => {
+        setModalType(type);
+        if (type === 'addSales') {
+          setCurrentItem({
+            tanggal: new Date().toISOString().split('T')[0],
+            namaToko: '',
+            area: masterArea[0]?.nama || '',
+            items: [{ produkId: masterProduk[0]?.id || '', qty: 1, hargaTotal: masterProduk[0]?.harga || 0 }],
+            grandTotal: masterProduk[0]?.harga || 0
+          });
+        } else if (type === 'editSales') {
+          setCurrentItem({ ...item });
+        } else if (type === 'addQty' || type === 'editQty') {
+          setCurrentItem(item || { produkId: masterProduk[0]?.id || '', target: 100 });
+        } else if (type === 'addValue' || type === 'editValue') {
+          setCurrentItem(item || { target: 150000000 });
+        } else if (type === 'addEC' || type === 'editEC') {
+          setCurrentItem(item || { target: 50 });
+        } else if (type === 'addECBrand' || type === 'editECBrand') {
+          setCurrentItem(item || { produkId: masterProduk[0]?.id || '', target: 10 });
+        } else if (type === 'addComp') {
+          setCurrentItem({
+            tanggal: new Date().toISOString().split('T')[0],
+            namaKompetitor: '',
+            area: masterArea[0]?.nama || '',
+            produkTerdampakId: masterProduk[0]?.id || '',
+            programPromo: ''
+          });
+        } else if (type === 'addMedia' || type === 'editMedia') {
+          setCurrentItem(item || {
+            tanggal: new Date().toISOString().split('T')[0],
+            namaKompetitor: '',
+            area: masterArea[0]?.nama || '',
+            produk: '',
+            mediaBase64: '',
+            catatan: ''
+          });
+        } else if (type === 'addProduk' || type === 'editProduk') {
+          setCurrentItem(item || { nama: '', sku: '', harga: 10000 });
+        } else if (type === 'addArea' || type === 'editArea') {
+          setCurrentItem(item || { nama: '', kode: '' });
+        }
+        setIsModalOpen(true);
+      };
+
+      const handleTabClick = (tab) => {
+        setActiveTab(tab);
+        setIsSidebarOpen(false);
+      };
+
+      const handleLogout = () => {
+        setCurrentUser(null);
+        localStorage.removeItem('salespro_user');
+        setLogoutConfirm(false);
+      };
+
+      // --- Fitur Baru: Sebaran Toko Aktif per Wilayah ---
+      const areaECMetrics = useMemo(() => {
+        const areaMap = {};
+        masterArea.forEach(a => {
+          areaMap[a.nama] = { storeCount: new Set(), revenue: 0 };
+        });
+        sales.forEach(s => {
+          if (!areaMap[s.area]) {
+            areaMap[s.area] = { storeCount: new Set(), revenue: 0 };
+          }
+          areaMap[s.area].storeCount.add(s.namaToko);
+          areaMap[s.area].revenue += s.grandTotal;
+        });
+        return Object.keys(areaMap).map(key => ({
+          area: key,
+          storeCount: areaMap[key].storeCount.size,
+          revenue: areaMap[key].revenue
+        })).sort((a, b) => b.storeCount - a.storeCount);
+      }, [sales, masterArea]);
+
+      useEffect(() => {
+        const savedUser = localStorage.getItem('salespro_user');
+        if (savedUser) {
+          try {
+            setCurrentUser(JSON.parse(savedUser));
+          } catch(e) {
+            localStorage.removeItem('salespro_user');
+          }
+        }
+
+        const cachedAi = localStorage.getItem('salespro_ai_rec');
+        if (cachedAi) {
+          try {
+            setAiRecommendations(JSON.parse(cachedAi));
+          } catch(e) {}
+        }
+
+        loadDatabase();
+      }, []);
+
+      const showNotification = (title, message, type = 'info') => {
+        setCustomNotification({ isOpen: true, title, message, type });
+      };
+
+      // Membaca data lengkap dari Google Sheets
+      const loadDatabase = () => {
+        setIsLoading(true);
+        if (typeof google !== 'undefined') {
+          google.script.run
+            .withSuccessHandler((data) => {
+              setMasterProduk(data.MasterProduk || []);
+              setMasterArea(data.MasterArea || []);
+              setSales(data.Sales || []);
+              setCompetitors(data.Competitors || []);
+              setCompetitorMedia(data.CompetitorMedia || []); 
+              setTargetQty(data.TargetQty || []);
+              
+              // Parsing target global, hari berjalan, & total hari dari TargetValue
+              const tValList = data.TargetValue || [];
+              const mainTVal = tValList.find(r => r.id === 'global_val');
+              const curDayVal = tValList.find(r => r.id === 'settings_current_day');
+              const totalDaysVal = tValList.find(r => r.id === 'settings_total_days');
+
+              setTargetValue(mainTVal ? [mainTVal] : [{ id: 'global_val', target: 150000000 }]);
+              setManualCurrentDay(curDayVal ? Number(curDayVal.target) : 4);
+              setManualTotalDays(totalDaysVal ? Number(totalDaysVal.target) : 31);
+
+              setTargetEC(data.TargetEC || []);
+              setTargetECBrand(data.TargetECBrand || []);
+              setIsLoading(false);
+            })
+            .withFailureHandler((err) => {
+              showNotification("Error", "Gagal memuat database: " + err, "error");
+              setIsLoading(false);
+            })
+            .getAllData();
+        } else {
+          // Fallback lokal (Demo Mode) jika berjalan di luar Apps Script
+          setMasterProduk([
+            { id: 'p1', nama: 'Kopi Bubuk Premium', sku: 'SKU-KBP-01', harga: 50000 },
+            { id: 'p2', nama: 'Kopi Bubuk Arabika', sku: 'SKU-KBA-02', harga: 75000 },
+            { id: 'p3', nama: 'Teh Melati Wangi', sku: 'SKU-TMW-03', harga: 25000 }
+          ]);
+          setMasterArea([
+            { id: 'a1', nama: 'Jakarta Selatan', kode: 'JKT-SEL' },
+            { id: 'a2', nama: 'Jakarta Barat', kode: 'JKT-BAR' },
+            { id: 'a3', nama: 'Bandung', kode: 'BDG-001' }
+          ]);
+          setSales([
+            { 
+              id: 's1', tanggal: '2026-06-20', namaToko: 'Toko Sejahtera', area: 'Jakarta Selatan', 
+              items: [{ produkId: 'p1', qty: 200, hargaTotal: 10000000 }],
+              grandTotal: 10000000
+            },
+            { 
+              id: 's2', tanggal: '2026-06-25', namaToko: 'Toko Makmur', area: 'Jakarta Barat', 
+              items: [{ produkId: 'p2', qty: 100, hargaTotal: 7500000 }],
+              grandTotal: 7500000
+            },
+            { 
+              id: 's3', tanggal: '2026-06-26', namaToko: 'Toko Maju Jaya', area: 'Jakarta Selatan', 
+              items: [{ produkId: 'p1', qty: 150, hargaTotal: 7500000 }],
+              grandTotal: 7500000
+            },
+            { 
+              id: 's4', tanggal: '2026-07-02', namaToko: 'Toko Baru Hoki', area: 'Jakarta Selatan', 
+              items: [{ produkId: 'p1', qty: 300, hargaTotal: 15000000 }, { produkId: 'p2', qty: 100, hargaTotal: 7500000 }],
+              grandTotal: 22500000
+            },
+            { 
+              id: 's5', tanggal: '2026-07-03', namaToko: 'Warung Berkah', area: 'Bandung', 
+              items: [{ produkId: 'p3', qty: 200, hargaTotal: 5000000 }],
+              grandTotal: 5000000
+            }
+          ]);
+          setCompetitors([
+            { id: 'c1', tanggal: '2026-06-22', area: 'Jakarta Selatan', namaKompetitor: 'Brand X', programPromo: 'Beli 2 Gratis 1', produkTerdampakId: 'p1' }
+          ]);
+          setCompetitorMedia([
+            { 
+              id: 'cm1', 
+              tanggal: '2026-06-24', 
+              area: 'Jakarta Selatan', 
+              namaKompetitor: 'Brand X', 
+              produk: 'Kopi Bubuk Premium', 
+              mediaBase64: '', 
+              catatan: 'Spanduk promo masif terpasang di depan pasar tradisional.' 
+            }
+          ]);
+          setTargetQty([
+            { id: 'tq1', produkId: 'p1', target: 1000 },
+            { id: 'tq2', produkId: 'p2', target: 500 }
+          ]);
+          setTargetValue([
+            { id: 'global_val', target: 150000000 }
+          ]);
+          setTargetEC([
+            { id: 'global_ec', target: 50 }
+          ]);
+          setTargetECBrand([
+            { id: 'teb1', produkId: 'p1', target: 20 },
+            { id: 'teb2', produkId: 'p2', target: 10 }
+          ]);
+          setIsLoading(false);
+        }
+      };
+
+      // Memproses Analisis dengan AI Gemini
+      const handleTriggerAiAnalysis = () => {
+        if (competitors.length === 0) {
+          showNotification("Gagal", "Belum ada laporan aktivitas kompetitor yang masuk untuk dianalisis.", "error");
+          return;
+        }
+
+        setIsAiLoading(true);
+        if (typeof google !== 'undefined') {
+          google.script.run
+            .withSuccessHandler((aiResultText) => {
+              try {
+                const parsed = JSON.parse(aiResultText);
+                if (parsed && parsed.recommendations) {
+                  setAiRecommendations(parsed.recommendations);
+                  localStorage.setItem('salespro_ai_rec', JSON.stringify(parsed.recommendations));
+                  showNotification("Selesai", "Analisis Taktis Gemini AI sukses diperbarui secara dinamis!", "success");
+                }
+              } catch (e) {
+                showNotification("Error", "Gagal memproses analisis kecerdasan AI.", "error");
+              }
+              setIsAiLoading(false);
+            })
+            .withFailureHandler((err) => {
+              showNotification("Error AI", err.toString(), "error");
+              setIsAiLoading(false);
+            })
+            .generateAiRecommendations(JSON.stringify(competitors), JSON.stringify(masterProduk));
+        } else {
+          // Simulasi AI di luar Apps Script (Demo)
+          setTimeout(() => {
+            const mockAiResult = [
+              {
+                competitorId: "c1",
+                area: "Jakarta Selatan",
+                produk: "Kopi Bubuk Premium",
+                namaKompetitor: "Brand X",
+                analisisAncaman: "Promosi beli 2 gratis 1 dari Brand X berpotensi mengunci modal belanja display (out-of-stock buffer) toko mitra kita sebesar 30-40% di Jakarta Selatan.",
+                strategiTangkisan: [
+                  "Luncurkan program bundling instan 'Paket Penetrasi display' diskon 15% khusus toko di Jakarta Selatan.",
+                  "Berikan insentif poin sebaran EC ganda untuk tim sales yang berhasil mengamankan penempatan display baris depan.",
+                  "Segera lakukan kunjungan darurat (emergency visit) ke 10 outlet penyumbang 80% omzet daerah bersangkutan."
+                ],
+                urgensi: "Tinggi"
+              }
+            ];
+            setAiRecommendations(mockAiResult);
+            localStorage.setItem('salespro_ai_rec', JSON.stringify(mockAiResult));
+            showNotification("Mode Demo Selesai", "Analisis Simulasi AI sukses diperbarui.", "success");
+            setIsAiLoading(false);
+          }, 2000);
+        }
+      };
+
+      // Eksekusi Login
+      const handleLoginSubmit = (e) => {
+        e.preventDefault();
+        setLoginError('');
+        setIsLoading(true);
+
+        if (typeof google !== 'undefined') {
+          google.script.run
+            .withSuccessHandler((response) => {
+              setIsLoading(false);
+              if (response.success) {
+                setCurrentUser(response.user);
+                localStorage.setItem('salespro_user', JSON.stringify(response.user));
+                showNotification("Selamat Datang!", "Halo " + response.user.nama + ", Anda masuk sebagai " + response.user.role, "success");
+              } else {
+                setLoginError(response.message);
+              }
+            })
+            .withFailureHandler((err) => {
+              setIsLoading(false);
+              setLoginError("Koneksi gagal: " + err);
+            })
+            .loginUser(loginUsername, loginPassword);
+        } else {
+          setIsLoading(false);
+          const u = loginUsername.toLowerCase();
+          if (u === 'admin' && loginPassword === 'admin123') {
+            const adminUser = { id: 'u1', username: 'admin', nama: 'Administrator Pusat', role: 'Admin' };
+            setCurrentUser(adminUser);
+            localStorage.setItem('salespro_user', JSON.stringify(adminUser));
+          } else if (u === 'sales' && loginPassword === 'sales123') {
+            const salesUser = { id: 'u2', username: 'sales', nama: 'Sales Lapangan', role: 'Sales' };
+            setCurrentUser(salesUser);
+            localStorage.setItem('salespro_user', JSON.stringify(salesUser));
+          } else {
+            setLoginError("Username/password salah! (Gunakan admin/admin123 atau sales/sales123)");
+          }
+        }
+      };
+
+      // Sesi Periode Aktif Bulanan Dinamis otomatis berbasis penanggalan
+      const activePeriodName = useMemo(() => {
+        return new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+      }, []);
+
+      // Sesi Hari Berjalan s.d Akhir Bulan Berbasis Kalender Dinamis
+      const calendarDaysInMonth = useMemo(() => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = today.getMonth();
+        return new Date(year, month + 1, 0).getDate();
+      }, []);
+
+      // Pemuatan default total hari calendar jika manual belum diatur
+      useEffect(() => {
+        if (!manualTotalDays || manualTotalDays === 31) {
+          setManualTotalDays(calendarDaysInMonth);
+        }
+      }, [calendarDaysInMonth]);
+
+      // Sesi Hari Berjalan default mengikuti tanggal hari ini
+      useEffect(() => {
+        const todayDay = new Date().getDate();
+        if (!manualCurrentDay || manualCurrentDay === 4) {
+          setManualCurrentDay(todayDay);
+        }
+      }, []);
+
+      // Fungsi Pembantu Simpan ke Google Sheets
+      const handleSave = (e) => {
+        e.preventDefault();
+        const isNew = !currentItem.id;
+        const itemToSave = { ...currentItem, id: currentItem.id || generateId() };
+
+        if (modalType.includes('Sales')) {
+          const updated = isNew ? [itemToSave, ...sales] : sales.map(s => s.id === itemToSave.id ? itemToSave : s);
+          setSales(updated);
+          triggerGASUpdate("Sales", updated);
+        } else if (modalType.includes('Qty')) {
+          const updated = isNew ? [...targetQty, itemToSave] : targetQty.map(t => t.id === itemToSave.id ? itemToSave : t);
+          setTargetQty(updated);
+          triggerGASUpdate("TargetQty", updated);
+        } else if (modalType.includes('Value')) {
+          const targetValRow = { id: 'global_val', target: itemToSave.target };
+          const curDayRow = { id: 'settings_current_day', target: manualCurrentDay };
+          const totalDaysRow = { id: 'settings_total_days', target: manualTotalDays };
+          
+          const updated = [targetValRow, curDayRow, totalDaysRow];
+          setTargetValue([targetValRow]);
+          triggerGASUpdate("TargetValue", updated);
+        } else if (modalType.includes('ECBrand')) {
+          const updated = isNew ? [...targetECBrand, itemToSave] : targetECBrand.map(t => t.id === itemToSave.id ? itemToSave : t);
+          setTargetECBrand(updated);
+          triggerGASUpdate("TargetECBrand", updated);
+        } else if (modalType.includes('EC')) {
+          const updated = [itemToSave]; 
+          setTargetEC(updated);
+          triggerGASUpdate("TargetEC", updated);
+        } else if (modalType === 'addComp') {
+          const updated = [itemToSave, ...competitors];
+          setCompetitors(updated);
+          triggerGASUpdate("Competitors", updated);
+        } else if (modalType.includes('Media')) {
+          const updated = isNew ? [itemToSave, ...competitorMedia] : competitorMedia.map(cm => cm.id === itemToSave.id ? itemToSave : cm);
+          setCompetitorMedia(updated);
+          triggerGASUpdate("CompetitorMedia", updated);
+        } else if (modalType.includes('Produk')) {
+          const updated = isNew ? [...masterProduk, itemToSave] : masterProduk.map(p => p.id === itemToSave.id ? itemToSave : p);
+          setMasterProduk(updated);
+          triggerGASUpdate("MasterProduk", updated);
+        } else if (modalType.includes('Area')) {
+          const updated = isNew ? [...masterArea, itemToSave] : masterArea.map(a => a.id === itemToSave.id ? itemToSave : a);
+          setMasterArea(updated);
+          triggerGASUpdate("MasterArea", updated);
+        }
+
+        setIsModalOpen(false);
+      };
+
+      // Handler menyimpan manual working days ke TargetValue tab
+      const handleSaveWorkingDays = (e) => {
+        e.preventDefault();
+        const targetVal = targetValue[0]?.target || 150000000;
+        
+        const targetValRow = { id: 'global_val', target: targetVal };
+        const curDayRow = { id: 'settings_current_day', target: manualCurrentDay };
+        const totalDaysRow = { id: 'settings_total_days', target: manualTotalDays };
+
+        const updated = [targetValRow, curDayRow, totalDaysRow];
+        triggerGASUpdate("TargetValue", updated);
+        showNotification("Berhasil", "Pengaturan hari kerja manual sukses disimpan.", "success");
+      };
+
+      const confirmDeleteAction = () => {
+        const { id, type } = deleteConfirm;
+        if (type === 'sales') {
+          const updated = sales.filter(s => s.id !== id);
+          setSales(updated);
+          triggerGASUpdate("Sales", updated);
+        } else if (type === 'targetQty') {
+          const updated = targetQty.filter(t => t.id !== id);
+          setTargetQty(updated);
+          triggerGASUpdate("TargetQty", updated);
+        } else if (type === 'targetValue') {
+          const updated = targetValue.filter(t => t.id !== id);
+          setTargetValue(updated);
+          triggerGASUpdate("TargetValue", updated);
+        } else if (type === 'targetEC') {
+          const updated = targetEC.filter(t => t.id !== id);
+          setTargetEC(updated);
+          triggerGASUpdate("TargetEC", updated);
+        } else if (type === 'targetECBrand') {
+          const updated = targetECBrand.filter(t => t.id !== id);
+          setTargetECBrand(updated);
+          triggerGASUpdate("TargetECBrand", updated);
+        } else if (type === 'competitor') {
+          const updated = competitors.filter(c => c.id !== id);
+          setCompetitors(updated);
+          triggerGASUpdate("Competitors", updated);
+        } else if (type === 'competitorMedia') {
+          const updated = competitorMedia.filter(cm => cm.id !== id);
+          setCompetitorMedia(updated);
+          triggerGASUpdate("CompetitorMedia", updated);
+        } else if (type === 'masterProduk') {
+          const updated = masterProduk.filter(p => p.id !== id);
+          setMasterProduk(updated);
+          triggerGASUpdate("MasterProduk", updated);
+        } else if (type === 'masterArea') {
+          const updated = masterArea.filter(a => a.id !== id);
+          setMasterArea(updated);
+          triggerGASUpdate("MasterArea", updated);
+        }
+        setDeleteConfirm({ isOpen: false, id: null, type: '' });
+      };
+
+      // Form Handling Multi-Item
+      const addSalesItem = () => {
+        const defaultProduct = masterProduk[0];
+        if (!defaultProduct) return;
+        setCurrentItem({
+          ...currentItem,
+          items: [...currentItem.items, { produkId: defaultProduct.id, qty: 1, hargaTotal: defaultProduct.harga }]
+        });
+      };
+
+      const updateSalesItem = (index, field, value) => {
+        const newItems = [...currentItem.items];
+        newItems[index][field] = field === 'qty' ? Number(value) : value;
+        
+        if (field === 'produkId' || field === 'qty') {
+          const prod = masterProduk.find(p => p.id === newItems[index].produkId);
+          newItems[index].hargaTotal = prod ? prod.harga * newItems[index].qty : 0;
+        }
+        
+        const grandTotal = newItems.reduce((sum, item) => sum + (item.hargaTotal || 0), 0);
+        setCurrentItem({ ...currentItem, items: newItems, grandTotal });
+      };
+
+      const removeSalesItem = (index) => {
+        if (currentItem.items.length === 1) return;
+        const newItems = currentItem.items.filter((_, i) => i !== index);
+        const grandTotal = newItems.reduce((sum, item) => sum + (item.hargaTotal || 0), 0);
+        setCurrentItem({ ...currentItem, items: newItems, grandTotal });
+      };
+
+      const runRateMetrics = useMemo(() => {
+        const currentDay = Math.max(1, manualCurrentDay);
+        const totalDaysInMonth = Math.max(currentDay, manualTotalDays);
+        const remainingDays = Math.max(1, totalDaysInMonth - currentDay + 1);
+
+        const todayDateObj = new Date();
+        const currentYear = todayDateObj.getFullYear();
+        const currentMonth = todayDateObj.getMonth();
+
+        const salesThisMonth = sales.filter(s => {
+          const d = new Date(s.tanggal);
+          return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+        });
+
+        const actualRevenueThisMonth = salesThisMonth.reduce((sum, s) => sum + s.grandTotal, 0);
+
+        const calculateRunRate = (targetTotal, actualAcc) => {
+          const t100 = targetTotal;
+          const t60 = targetTotal * 0.6;
+
+          const flatDaily100 = Math.round(t100 / totalDaysInMonth);
+          const flatDaily60 = Math.round(t60 / totalDaysInMonth);
+
+          const reqDaily100 = Math.round(Math.max(0, t100 - actualAcc) / remainingDays);
+          const reqDaily60 = Math.round(Math.max(0, t60 - actualAcc) / remainingDays);
+
+          const actualAvgDaily = currentDay > 1 ? Math.round(actualAcc / (currentDay - 1)) : actualAcc;
+
+          return {
+            t100,
+            t60,
+            flatDaily100,
+            flatDaily60,
+            reqDaily100,
+            reqDaily60,
+            actualAvgDaily
+          };
+        };
+
+        const targetVal = targetValue[0]?.target || 0;
+        const valueRates = calculateRunRate(targetVal, actualRevenueThisMonth);
+
+        const targetECVal = targetEC[0]?.target || 0;
+        const actualECVal = getActualEC(); 
+        const ecRates = calculateRunRate(targetECVal, actualECVal);
+
+        const qtyRates = targetQty.map(t => {
+          const prod = masterProduk.find(p => p.id === t.produkId);
+          const actual = getActualQty(t.produkId);
+          return {
+            id: t.id,
+            nama: prod?.nama || 'Produk',
+            ...calculateRunRate(t.target, actual)
+          };
+        });
+
+        const ecBrandRates = targetECBrand.map(t => {
+          const prod = masterProduk.find(p => p.id === t.produkId);
+          const actual = getActualECBrand(t.produkId);
+          return {
+            id: t.id,
+            nama: prod?.nama || 'Produk',
+            ...calculateRunRate(t.target, actual)
+          };
+        });
+
+        return {
+          currentDay,
+          totalDaysInMonth,
+          remainingDays,
+          valueRates,
+          ecRates,
+          qtyRates,
+          ecBrandRates
+        };
+      }, [sales, targetValue, targetEC, targetQty, targetECBrand, masterProduk, manualCurrentDay, manualTotalDays]);
+
+      // --- LOGIKA ANALISIS CAPAIAN MANUAL DATE RANGE (KOMPARASI MULTI-METRIK) ---
+      const performanceMetrics = useMemo(() => {
+        const getMetricsForRange = (start, end) => {
+          const dStart = new Date(start);
+          const dEnd = new Date(end);
+          dEnd.setHours(23, 59, 59, 999);
+
+          const filteredSales = sales.filter(s => {
+            const d = new Date(s.tanggal);
+            return d >= dStart && d <= dEnd;
+          });
+
+          const revenue = filteredSales.reduce((sum, s) => sum + s.grandTotal, 0);
+          const ecAllSet = new Set(filteredSales.map(s => s.namaToko));
+          const ecAll = ecAllSet.size;
+
+          let totalQty = 0;
+          const productQtyMap = {};
+          const productECBrandMap = {};
+
+          masterProduk.forEach(p => {
+            productQtyMap[p.id] = 0;
+            productECBrandMap[p.id] = new Set();
+          });
+
+          // Inisialisasi peta EC Wilayah
+          const areaECMap = {};
+          masterArea.forEach(a => {
+            areaECMap[a.nama] = new Set();
+          });
+
+          filteredSales.forEach(s => {
+            if (areaECMap[s.area] !== undefined) {
+              areaECMap[s.area].add(s.namaToko);
+            } else {
+              areaECMap[s.area] = new Set([s.namaToko]);
+            }
+            s.items.forEach(item => {
+              totalQty += item.qty;
+              if (productQtyMap[item.produkId] !== undefined) {
+                productQtyMap[item.produkId] += item.qty;
+                productECBrandMap[item.produkId].add(s.namaToko);
+              }
+            });
+          });
+
+          const productECBrandFinal = {};
+          masterProduk.forEach(p => {
+            productECBrandFinal[p.id] = productECBrandMap[p.id].size;
+          });
+
+          const areaECFinal = {};
+          masterArea.forEach(a => {
+            areaECFinal[a.nama] = areaECMap[a.nama] ? areaECMap[a.nama].size : 0;
+          });
+
+          return {
+            revenue,
+            ecAll,
+            totalQty,
+            productQtyMap,
+            productECBrandFinal,
+            areaECFinal
+          };
+        };
+
+        const metricsA = getMetricsForRange(dateStartA, dateEndA);
+        const metricsB = getMetricsForRange(dateStartB, dateEndB);
+
+        const calculateGrowth = (valA, valB) => {
+          if (valB === 0) return valA > 0 ? 100 : 0;
+          return Math.round(((valA - valB) / valB) * 100);
+        };
+
+        return {
+          metricsA,
+          metricsB,
+          growthRevenue: calculateGrowth(metricsA.revenue, metricsB.revenue),
+          growthECAll: calculateGrowth(metricsA.ecAll, metricsB.ecAll),
+          growthTotalQty: calculateGrowth(metricsA.totalQty, metricsB.totalQty),
+          calculateGrowth
+        };
+      }, [sales, dateStartA, dateEndA, dateStartB, dateEndB, masterProduk, masterArea]);
+
+      const DashboardView = () => {
+        const totalRevenue = sales.reduce((sum, s) => sum + s.grandTotal, 0);
+        const actualEC = getActualEC();
+
+        return (
+          <div className="space-y-6 md:space-y-8 animate-fadeIn">
+            {/* PANEL ANALISIS TARGET HARIAN DINAMIS (60% DAN 100%) */}
+            <div className="bg-slate-900 text-white p-5 md:p-8 rounded-2xl md:rounded-3xl shadow-xl space-y-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl"></div>
+              
+              <div className="border-b border-slate-800 pb-4 flex justify-between items-center">
+                <div>
+                  <h3 className="font-black text-base md:text-lg text-white flex items-center gap-2">
+                    <IconTarget/>
+                    Pelacak Target Harian Dinamis (Run-Rate)
+                  </h3>
+                  <p className="text-[10px] md:text-xs text-slate-400">Analisis beban kerja harian wajib sisa {runRateMetrics.remainingDays} hari untuk capai KPI minimum (60%) & penuh (100%).</p>
+                </div>
+                <div className="bg-slate-800 px-3 py-1.5 rounded-xl text-center hidden sm:block">
+                  <p className="text-[9px] font-bold text-slate-500 uppercase">Hari ke</p>
+                  <p className="text-sm font-black text-blue-400">{runRateMetrics.currentDay} / {runRateMetrics.totalDaysInMonth}</p>
+                </div>
+              </div>
+
+              {/* Grid Target Global: Value & EC */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Run-Rate Value */}
+                <div className="bg-slate-950/60 p-4 md:p-5 rounded-2xl border border-slate-800 space-y-3">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <span className="text-[10px] font-extrabold text-blue-400 uppercase tracking-wider">Omzet Penjualan (Value)</span>
+                    <span className="text-[10px] text-slate-400 font-semibold">Rata-rata: {formatCurrency(runRateMetrics.valueRates.actualAvgDaily)} / hari</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-bold text-slate-500 uppercase">Target Harian 100%</p>
+                      <p className="text-sm font-black text-white">{formatCurrency(runRateMetrics.valueRates.reqDaily100)}</p>
+                      <span className="text-[9px] text-slate-400 block">Flat Awal: {formatCurrency(runRateMetrics.valueRates.flatDaily100)}</span>
+                    </div>
+                    <div className="space-y-1 border-l border-slate-800 pl-4">
+                      <p className="text-[9px] font-bold text-slate-500 uppercase">Target Harian 60%</p>
+                      <p className="text-sm font-black text-emerald-400">{formatCurrency(runRateMetrics.valueRates.reqDaily60)}</p>
+                      <span className="text-[9px] text-slate-400 block">Flat Awal: {formatCurrency(runRateMetrics.valueRates.flatDaily60)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Run-Rate EC Global */}
+                <div className="bg-slate-950/60 p-4 md:p-5 rounded-2xl border border-slate-800 space-y-3">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <span className="text-[10px] font-extrabold text-blue-400 uppercase tracking-wider">Effective Call Toko (EC Global)</span>
+                    <span className="text-[10px] text-slate-400 font-semibold">Rata-rata: {runRateMetrics.ecRates.actualAvgDaily} Toko / hari</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-bold text-slate-500 uppercase">Target Harian 100%</p>
+                      <p className="text-sm font-black text-white">{runRateMetrics.ecRates.reqDaily100} Toko</p>
+                      <span className="text-[9px] text-slate-400 block">Flat Awal: {runRateMetrics.ecRates.flatDaily100} / hr</span>
+                    </div>
+                    <div className="space-y-1 border-l border-slate-800 pl-4">
+                      <p className="text-[9px] font-bold text-slate-500 uppercase">Target Harian 60%</p>
+                      <p className="text-sm font-black text-emerald-400">{runRateMetrics.ecRates.reqDaily60} Toko</p>
+                      <span className="text-[9px] text-slate-400 block">Flat Awal: {runRateMetrics.ecRates.flatDaily60} / hr</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Grid Target Detail: Qty & EC Brand */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Run-Rate Qty per Produk */}
+                <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-800 space-y-3">
+                  <span className="text-[10px] font-extrabold text-indigo-400 tracking-wider uppercase block border-b border-slate-800 pb-2">Volume Qty per Produk</span>
+                  <div className="space-y-3 max-h-[160px] overflow-y-auto pr-1">
+                    {runRateMetrics.qtyRates.map(r => (
+                      <div key={r.id} className="flex justify-between items-center text-xs">
+                        <span className="font-semibold text-slate-300 truncate max-w-[100px]">{r.nama}</span>
+                        <div className="text-right space-x-3 text-[11px]">
+                          <span className="text-white font-black" title="Target Wajib 100%">{r.reqDaily100} Pcs <span className="text-[8px] text-slate-500 font-normal">/hr</span></span>
+                          <span className="text-emerald-400 font-black" title="Target Wajib 60%">{r.reqDaily60} Pcs <span className="text-[8px] text-slate-500 font-normal">/hr</span></span>
+                        </div>
+                      </div>
+                    ))}
+                    {runRateMetrics.qtyRates.length === 0 && <span className="text-[10px] text-slate-500 block">Target Qty belum terkonfigurasi.</span>}
+                  </div>
+                </div>
+
+                {/* Run-Rate EC Brand per Produk */}
+                <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-800 space-y-3">
+                  <span className="text-[10px] font-extrabold text-indigo-400 tracking-wider uppercase block border-b border-slate-800 pb-2">EC Brand per Produk</span>
+                  <div className="space-y-3 max-h-[160px] overflow-y-auto pr-1">
+                    {runRateMetrics.ecBrandRates.map(r => (
+                      <div key={r.id} className="flex justify-between items-center text-xs">
+                        <span className="font-semibold text-slate-300 truncate max-w-[100px]">{r.nama}</span>
+                        <div className="text-right space-x-3 text-[11px]">
+                          <span className="text-white font-black" title="Target Wajib 100%">{r.reqDaily100} Toko <span className="text-[8px] text-slate-500 font-normal">/hr</span></span>
+                          <span className="text-emerald-400 font-black" title="Target Wajib 60%">{r.reqDaily60} Toko <span className="text-[8px] text-slate-500 font-normal">/hr</span></span>
+                        </div>
+                      </div>
+                    ))}
+                    {runRateMetrics.ecBrandRates.length === 0 && <span className="text-[10px] text-slate-500 block">Target EC Brand belum terkonfigurasi.</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Kartu Metrik Utama */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+              <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-5 md:p-6 rounded-2xl md:rounded-3xl text-white shadow-xl shadow-blue-500/10">
+                <p className="text-blue-100 text-[10px] md:text-xs font-bold uppercase tracking-wider">Total Pendapatan Aktual</p>
+                <p className="text-2xl md:text-3xl font-black mt-2">{formatCurrency(totalRevenue)}</p>
+                <p className="text-[10px] md:text-xs text-blue-200 mt-4 font-medium">Berdasarkan total transaksi riil di lapangan</p>
+              </div>
+
+              <div className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center">
+                <div>
+                  <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase tracking-wider">Total Effective Call (EC)</p>
+                  <p className="text-2xl md:text-3xl font-black text-slate-800 mt-2">{actualEC} Toko Unik</p>
+                  <span className="text-[10px] md:text-xs text-emerald-600 font-bold mt-2 inline-block">Jumlah outlet terbayar aktif</span>
+                </div>
+              </div>
+
+              <div className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center">
+                <div>
+                  <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase tracking-wider">Master Data Terdaftar</p>
+                  <p className="text-base md:text-lg font-black text-slate-800 mt-2">{masterProduk.length} Produk • {masterArea.length} Wilayah</p>
+                  {currentUser?.role === 'Admin' && (
+                    <button onClick={() => handleTabClick('master')} className="text-[10px] md:text-xs text-blue-600 font-bold mt-2 hover:underline text-left">Kelola Database &rarr;</button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* PANEL PENETRASI AREA TERBANYAK TOKO AKTIF */}
+            <div className="bg-white p-5 md:p-8 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm space-y-6 animate-fadeIn">
+              <div>
+                <h3 className="font-black text-slate-800 text-base md:text-lg flex items-center gap-2">
+                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Analisis Penetrasi Area Terbaik (Sebaran Toko Aktif)
+                </h3>
+                <p className="text-xs text-slate-500">Peta sebaran wilayah dengan jumlah toko rekanan pembeli unik terbanyak (Effective Call tertinggi).</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {areaECMetrics.map((item, idx) => {
+                  const maxStores = Math.max(...areaECMetrics.map(a => a.storeCount), 1);
+                  const pct = Math.round((item.storeCount / maxStores) * 100);
+                  return (
+                    <div key={item.area} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 relative overflow-hidden flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
+                            idx === 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
+                          }`}>
+                            Peringkat #{idx + 1}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-bold">{formatCurrency(item.revenue)}</span>
+                        </div>
+                        <h4 className="font-black text-slate-800 text-xs md:text-sm truncate">{item.area}</h4>
+                      </div>
+                      <div className="mt-4 space-y-1">
+                        <div className="flex justify-between text-[11px] font-bold text-slate-700">
+                          <span>Sebaran Toko:</span>
+                          <span className="text-indigo-600">{item.storeCount} Toko Aktif</span>
+                        </div>
+                        <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                          <div className="bg-indigo-600 h-full rounded-full transition-all duration-500" style={{ width: `${pct}%` }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {areaECMetrics.length === 0 && (
+                  <p className="text-xs text-slate-400 py-6 text-center col-span-full">Belum ada data area terekam.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Rekap Target Bulanan */}
+            <div className="bg-white p-5 md:p-8 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm space-y-8">
+              <div className="border-b pb-4">
+                <h3 className="font-black text-slate-800 text-base md:text-lg">Catatan Pencapaian Target Bulanan</h3>
+                <p className="text-xs text-slate-500">Evaluasi performa total volume Qty, Value, dan EC terhadap batas target acuan.</p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+                {/* Target Value */}
+                <div className="bg-slate-50 p-4 md:p-6 rounded-2xl border border-slate-200">
+                  <h4 className="font-bold text-slate-700 text-xs md:text-sm mb-4 border-b pb-2">Target Omzet Bulanan (Value)</h4>
+                  {(() => {
+                    const targetVal = targetValue[0]?.target || 0;
+                    const pct = targetVal ? Math.min(Math.round((totalRevenue / targetVal) * 100), 100) : 0;
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[10px] md:text-xs font-bold text-slate-800">
+                          <span>Progress Omzet</span>
+                          <span>{pct}% ({formatCurrency(totalRevenue)} / {formatCurrency(targetVal)})</span>
+                        </div>
+                        <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+                          <div className="bg-emerald-600 h-full transition-all duration-500" style={{ width: `${pct}%` }}></div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Target EC Global */}
+                <div className="bg-slate-50 p-4 md:p-6 rounded-2xl border border-slate-200">
+                  <h4 className="font-bold text-slate-700 text-xs md:text-sm mb-4 border-b pb-2">Target Effective Call (EC) Unik Toko</h4>
+                  {(() => {
+                    const targetECVal = targetEC[0]?.target || 0;
+                    const pct = targetECVal ? Math.min(Math.round((actualEC / targetECVal) * 100), 100) : 0;
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[10px] md:text-xs font-bold text-slate-800">
+                          <span>Sisa Target: {Math.max(0, targetECVal - actualEC)} Toko lagi</span>
+                          <span>{pct}% ({actualEC} / {targetECVal} Toko)</span>
+                        </div>
+                        <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+                          <div className="bg-indigo-600 h-full transition-all duration-500" style={{ width: `${pct}%` }}></div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+                {/* Volume per Produk */}
+                <div className="bg-slate-50 p-4 md:p-6 rounded-2xl border border-slate-200">
+                  <h4 className="font-bold text-slate-700 text-xs md:text-sm mb-4 border-b pb-2">Target Volume (Qty) per Produk</h4>
+                  <div className="space-y-4">
+                    {targetQty.map(t => {
+                      const prod = masterProduk.find(p => p.id === t.produkId);
+                      if (!prod) return null;
+                      const actual = getActualQty(t.produkId);
+                      const pct = Math.min(Math.round((actual / t.target) * 100), 100);
+                      return (
+                        <div key={t.id} className="space-y-1">
+                          <div className="flex justify-between text-[10px] md:text-xs font-bold text-slate-800">
+                            <span className="truncate max-w-[120px]">{prod.nama}</span>
+                            <span>{actual}/{t.target} Pcs ({pct}%)</span>
+                          </div>
+                          <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                            <div className="bg-blue-600 h-full transition-all duration-500" style={{ width: `${pct}%` }}></div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {targetQty.length === 0 && <p className="text-xs text-slate-400">Target Qty belum diset.</p>}
+                  </div>
+                </div>
+
+                {/* EC Brand per Produk */}
+                <div className="bg-slate-50 p-4 md:p-6 rounded-2xl border border-slate-200">
+                  <h4 className="font-bold text-slate-700 text-xs md:text-sm mb-4 border-b pb-2">Target EC Brand (Distribusi Toko)</h4>
+                  <div className="space-y-4">
+                    {targetECBrand.map(t => {
+                      const prod = masterProduk.find(p => p.id === t.produkId);
+                      if (!prod) return null;
+                      const actual = getActualECBrand(t.produkId);
+                      const pct = Math.min(Math.round((actual / t.target) * 100), 100);
+                      return (
+                        <div key={t.id} className="space-y-1">
+                          <div className="flex justify-between text-[10px] md:text-xs font-bold text-slate-800">
+                            <span className="truncate max-w-[120px]">{prod.nama}</span>
+                            <span>{actual}/{t.target} Toko ({pct}%)</span>
+                          </div>
+                          <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                            <div className="bg-amber-500 h-full transition-all duration-500" style={{ width: `${pct}%` }}></div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {targetECBrand.length === 0 && <p className="text-xs text-slate-400">Target EC Brand belum diset.</p>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const AnalisisKomparasiView = () => {
+        const { metricsA, metricsB, growthRevenue, growthECAll, growthTotalQty } = performanceMetrics;
+
+        return (
+          <div className="space-y-6 md:space-y-8 animate-fadeIn">
+            {/* PANEL FILTER RANGE TANGGAL */}
+            <div className="bg-white p-5 md:p-8 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm space-y-6">
+              <div className="border-b pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h3 className="font-black text-slate-800 text-base md:text-lg flex items-center gap-2">
+                    <IconCalendar/>
+                    Komparasi Tanggal Komprehensif (Multi-Metrik)
+                  </h3>
+                  <p className="text-xs text-slate-500">Analisis tren performa sebaran penjualan, quantity, dan EC dari dua periode waktu kustom pilihan Anda.</p>
+                </div>
+                {/* Shortcut Presets */}
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => {
+                      setDateStartA('2026-07-01'); setDateEndA('2026-07-04');
+                      setDateStartB('2026-06-01'); setDateEndB('2026-06-30');
+                      showNotification("Preset M-to-M", "Periode diset ke komparasi Bulan Berjalan vs Bulan Lalu.", "info");
+                    }}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-lg transition-colors border"
+                  >
+                    Bulan ini vs Lalu
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setDateStartA('2026-06-29'); setDateEndA('2026-07-04');
+                      setDateStartB('2026-06-22'); setDateEndB('2026-06-28');
+                      showNotification("Preset W-to-W", "Periode diset ke komparasi Minggu ini vs Minggu Lalu.", "info");
+                    }}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-lg transition-colors border"
+                  >
+                    Minggu ini vs Lalu
+                  </button>
+                </div>
+              </div>
+
+              {/* Inputs Tanggal */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-4 rounded-2xl border">
+                {/* Periode Utama */}
+                <div className="space-y-3">
+                  <span className="text-[10px] font-black text-blue-600 uppercase tracking-wider block">Periode Utama (A)</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[9px] text-slate-400 font-bold">Mulai Tanggal</label>
+                      <input type="date" value={dateStartA} onChange={e => setDateStartA(e.target.value)} className="w-full p-2 bg-white border rounded-lg text-xs font-bold mt-1" />
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-slate-400 font-bold">Sampai Tanggal</label>
+                      <input type="date" value={dateEndA} onChange={e => setDateEndA(e.target.value)} className="w-full p-2 bg-white border rounded-lg text-xs font-bold mt-1" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Periode Pembanding */}
+                <div className="space-y-3 md:border-l md:pl-6">
+                  <span className="text-[10px] font-black text-purple-600 uppercase tracking-wider block">Periode Pembanding (B)</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[9px] text-slate-400 font-bold">Mulai Tanggal</label>
+                      <input type="date" value={dateStartB} onChange={e => setDateStartB(e.target.value)} className="w-full p-2 bg-white border rounded-lg text-xs font-bold mt-1" />
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-slate-400 font-bold">Sampai Tanggal</label>
+                      <input type="date" value={dateEndB} onChange={e => setDateEndB(e.target.value)} className="w-full p-2 bg-white border rounded-lg text-xs font-bold mt-1" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* HASIL INTEGRASI KOMPARASI MACRO */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Omzet Value Card */}
+              <div className="bg-slate-900 text-white p-5 rounded-2xl border flex flex-col justify-between shadow-md">
+                <div className="flex justify-between items-start">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Omzet Penjualan (Value)</span>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${growthRevenue >= 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                    {growthRevenue >= 0 ? `+${growthRevenue}%` : `${growthRevenue}%`}
+                  </span>
+                </div>
+                <div className="mt-4">
+                  <p className="text-xl md:text-2xl font-black">{formatCurrency(metricsA.revenue)}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Periode A</p>
+                </div>
+                <div className="mt-4 border-t pt-3 flex justify-between text-xs text-slate-400">
+                  <span>Periode B:</span>
+                  <span className="font-bold text-white">{formatCurrency(metricsB.revenue)}</span>
+                </div>
+              </div>
+
+              {/* EC All Card */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 flex flex-col justify-between shadow-sm">
+                <div className="flex justify-between items-start">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Effective Call (EC All)</span>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${growthECAll >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                    {growthECAll >= 0 ? `+${growthECAll}%` : `${growthECAll}%`}
+                  </span>
+                </div>
+                <div className="mt-4">
+                  <p className="text-xl md:text-2xl font-black text-slate-800">{metricsA.ecAll} Toko</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Periode A</p>
+                </div>
+                <div className="mt-4 border-t pt-3 flex justify-between text-xs text-slate-500">
+                  <span>Periode B:</span>
+                  <span className="font-bold text-slate-700">{metricsB.ecAll} Toko</span>
+                </div>
+              </div>
+
+              {/* Qty Total Card */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 flex flex-col justify-between shadow-sm">
+                <div className="flex justify-between items-start">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Kuantitas (Qty)</span>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${growthTotalQty >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                    {growthTotalQty >= 0 ? `+${growthTotalQty}%` : `${growthTotalQty}%`}
+                  </span>
+                </div>
+                <div className="mt-4">
+                  <p className="text-xl md:text-2xl font-black text-slate-800">{metricsA.totalQty} Pcs</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Periode A</p>
+                </div>
+                <div className="mt-4 border-t pt-3 flex justify-between text-xs text-slate-500">
+                  <span>Periode B:</span>
+                  <span className="font-bold text-slate-700">{metricsB.totalQty} Pcs</span>
+                </div>
+              </div>
+            </div>
+
+            {/* KOMPARASI SEBARAN TOKO AKTIF (EC) PER WILAYAH */}
+            <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4 animate-fadeIn">
+              <h3 className="font-black text-slate-800 text-sm md:text-base border-b pb-2 flex items-center gap-2">
+                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Perbandingan Sebaran Toko Aktif (EC) per Wilayah
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">Evaluasi performa jangkauan penetrasi di tiap area kerja antara kedua periode.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {masterArea.map(a => {
+                  const ecA = metricsA.areaECFinal[a.nama] || 0;
+                  const ecB = metricsB.areaECFinal[a.nama] || 0;
+                  const growth = performanceMetrics.calculateGrowth(ecA, ecB);
+
+                  return (
+                    <div key={a.id} className="p-4 bg-slate-50 rounded-2xl border flex flex-col justify-between">
+                      <div>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{a.kode}</span>
+                        <h4 className="font-black text-slate-800 text-xs md:text-sm mt-0.5">{a.nama}</h4>
+                      </div>
+                      <div className="mt-4 space-y-2">
+                        <div className="flex justify-between text-xs font-semibold text-slate-600">
+                          <span>Periode A (Utama):</span>
+                          <span className="font-bold text-slate-800">{ecA} Toko</span>
+                        </div>
+                        <div className="flex justify-between text-xs font-semibold text-slate-600 border-t pt-1.5">
+                          <span>Periode B (Pembanding):</span>
+                          <span className="font-bold text-slate-600">{ecB} Toko</span>
+                        </div>
+                        <div className="flex justify-between text-xs font-bold border-t pt-1.5">
+                          <span>Tren Jangkauan:</span>
+                          <span className={growth >= 0 ? 'text-emerald-600' : 'text-rose-600'}>
+                            {growth >= 0 ? `+${growth}%` : `${growth}%`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* TABEL PER-PRODUK KOMPARATIF */}
+            <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+              <h3 className="font-black text-slate-800 text-sm md:text-base border-b pb-2">Detail Perbandingan per Produk</h3>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-600 border-b font-bold text-[10px] uppercase tracking-wider">
+                      <th className="p-3">Nama Produk</th>
+                      <th className="p-3 text-center">Qty A</th>
+                      <th className="p-3 text-center">Qty B</th>
+                      <th className="p-3 text-center">Tren Qty</th>
+                      <th className="p-3 text-center">EC Brand A</th>
+                      <th className="p-3 text-center">EC Brand B</th>
+                      <th className="p-3 text-center">Tren EC</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {masterProduk.map(p => {
+                      const qtyA = metricsA.productQtyMap[p.id] || 0;
+                      const qtyB = metricsB.productQtyMap[p.id] || 0;
+                      const ecBrandA = metricsA.productECBrandFinal[p.id] || 0;
+                      const ecBrandB = metricsB.productECBrandFinal[p.id] || 0;
+
+                      const qtyGrowth = performanceMetrics.calculateGrowth(qtyA, qtyB);
+                      const ecGrowth = performanceMetrics.calculateGrowth(ecBrandA, ecBrandB);
+
+                      return (
+                        <tr key={p.id} className="border-b hover:bg-slate-50/50">
+                          <td className="p-3 font-bold text-slate-700 truncate max-w-[120px] md:max-w-none">{p.nama}</td>
+                          <td className="p-3 text-center font-semibold text-slate-600">{qtyA} Pcs</td>
+                          <td className="p-3 text-center font-semibold text-slate-500">{qtyB} Pcs</td>
+                          <td className={`p-3 text-center font-black ${qtyGrowth >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {qtyGrowth >= 0 ? `+${qtyGrowth}%` : `${qtyGrowth}%`}
+                          </td>
+                          <td className="p-3 text-center font-semibold text-slate-600">{ecBrandA} Toko</td>
+                          <td className="p-3 text-center font-semibold text-slate-500">{ecBrandB} Toko</td>
+                          <td className={`p-3 text-center font-black ${ecGrowth >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {ecGrowth >= 0 ? `+${ecGrowth}%` : `${ecGrowth}%`}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const MarketIntelView = () => {
+        const [intelSubTab, setIntelSubTab] = useState('promo'); 
+
+        return (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex border-b border-slate-200">
+              <button 
+                onClick={() => setIntelSubTab('promo')}
+                className={`px-4 py-2 text-xs font-bold transition-all border-b-2 ${intelSubTab === 'promo' ? 'border-red-600 text-red-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+              >
+                Laporan Promo & Aktivitas
+              </button>
+              <button 
+                onClick={() => setIntelSubTab('media')}
+                className={`px-4 py-2 text-xs font-bold transition-all border-b-2 ${intelSubTab === 'media' ? 'border-red-600 text-red-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+              >
+                Media & Iklan Kompetitor
+              </button>
+            </div>
+
+            {intelSubTab === 'promo' ? (
+              <div className="space-y-6">
+                {/* HEADLINE INTEGRASI PINTAR AI */}
+                <div className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <h3 className="font-black text-slate-800 text-base md:text-lg">Kecerdasan Buatan & Taktis Kompetitor</h3>
+                    <p className="text-[10px] md:text-xs text-slate-500">Menganalisis pergerakan kompetitor di lapangan secara terarah menggunakan model pintar Gemini AI.</p>
+                  </div>
+                  
+                  <button 
+                    onClick={handleTriggerAiAnalysis}
+                    disabled={isAiLoading}
+                    className="w-full md:w-auto bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:from-slate-400 disabled:to-slate-500 text-white text-xs font-black px-5 py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25 transition-all"
+                  >
+                    {isAiLoading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin-custom"></div>
+                        <span>Menganalisis Strategi...</span>
+                      </>
+                    ) : (
+                      <>
+                        <IconSparkles/>
+                        <span>Analisis Taktis Gemini AI</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* TWO COLUMNS: LAPORAN LAPANGAN & REKOMENDASI TANGKISAN AI */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+                  {/* Laporan Promo Lapangan */}
+                  <div className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm flex flex-col h-[480px] md:h-[520px]">
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h4 className="font-black text-slate-800 text-sm md:text-base">Market Intelligence Report</h4>
+                        <p className="text-[10px] text-slate-500">Daftar promo taktis kompetitor yang didaftarkan.</p>
+                      </div>
+                      <button onClick={() => handleOpenModal('addComp')} className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-md">
+                        <IconPlus/> Lapor Baru
+                      </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+                      {competitors.map(comp => {
+                        const prod = masterProduk.find(p => p.id === comp.produkTerdampakId);
+                        return (
+                          <div key={comp.id} className="p-4 bg-red-50/75 border border-red-100 rounded-2xl relative group animate-fadeIn">
+                            {currentUser?.role === 'Admin' && (
+                              <button onClick={() => setDeleteConfirm({ isOpen: true, id: comp.id, type: 'competitor' })} className="absolute top-3 right-3 text-slate-400 hover:text-red-600 transition-all">
+                                <IconTrash/>
+                              </button>
+                            )}
+                            <div className="flex justify-between text-[10px] text-slate-400 mb-2">
+                              <span className="font-bold text-red-800 bg-red-100 px-2 py-0.5 rounded-md">{comp.area}</span>
+                              <span>{comp.tanggal}</span>
+                            </div>
+                            <p className="text-xs font-bold text-slate-700">Kompetitor: {comp.namaKompetitor}</p>
+                            <p className="text-xs text-slate-500">Dampak: {prod?.nama || 'Global'}</p>
+                            <div className="mt-2 text-xs font-bold text-red-600 bg-white p-2 rounded-lg border border-red-100">Promo: {comp.programPromo}</div>
+                          </div>
+                        );
+                      })}
+                      {competitors.length === 0 && (
+                        <p className="text-xs text-slate-400 text-center py-12">Belum ada promo kompetitor yang dilaporkan.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Rekomendasi Pintar AI Gemini */}
+                  <div className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm flex flex-col h-[480px] md:h-[520px]">
+                    <div className="border-b pb-4 mb-4 flex justify-between items-center">
+                      <div>
+                        <h4 className="font-black text-slate-800 text-sm md:text-base flex items-center gap-1.5">
+                          <IconSparkles/>
+                          Rekomendasi Pintar AI Gemini
+                        </h4>
+                        <p className="text-[10px] text-slate-500">Saran tangkisan taktis dinamis yang dirancang Gemini.</p>
+                      </div>
+                      <span className="bg-purple-50 text-purple-700 font-black text-[9px] uppercase px-2 py-1 rounded-md tracking-wider">AI Powered</span>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto space-y-6 pr-1">
+                      {isAiLoading ? (
+                        <div className="h-full flex flex-col items-center justify-center space-y-3">
+                          <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin-custom"></div>
+                          <p className="text-xs font-bold text-slate-500 animate-pulse">Menghubungi AI Gemini di Server Pusat...</p>
+                        </div>
+                      ) : aiRecommendations.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center p-6 bg-slate-50 text-center rounded-2xl border border-dashed text-xs text-slate-400">
+                          <IconSparkles/>
+                          <p className="mt-2 leading-relaxed">Klik tombol <strong>"Analisis Taktis Gemini AI"</strong> diatas untuk menganalisis temuan promo kompetitor lapangan secara terarah.</p>
+                        </div>
+                      ) : (
+                        aiRecommendations.map((rec, i) => (
+                          <div key={i} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 relative overflow-hidden animate-fadeIn">
+                            {/* Urgent Badge */}
+                            <span className={`absolute top-4 right-4 text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
+                              rec.urgensi === 'Tinggi' ? 'bg-red-100 text-red-800' :
+                              rec.urgensi === 'Sedang' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                            }`}>
+                              Urgensi: {rec.urgensi}
+                            </span>
+
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] font-extrabold text-slate-400 block uppercase tracking-wider">{rec.area} • {rec.produk}</span>
+                              <h5 className="font-extrabold text-slate-800 text-xs">Ancaman {rec.namaKompetitor}</h5>
+                            </div>
+
+                            <p className="text-xs text-slate-600 leading-relaxed bg-white p-3 rounded-xl border border-slate-100">{rec.analisisAncaman}</p>
+
+                            <div className="space-y-2">
+                              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block">Strategi Tangkisan Taktis</span>
+                              <ul className="space-y-2">
+                                {rec.strategiTangkisan.map((strat, idx) => (
+                                  <li key={idx} className="text-xs text-slate-600 flex items-start gap-2 bg-white/70 p-2 rounded-lg border">
+                                    <span className="text-indigo-600 font-extrabold">✔️</span>
+                                    <span>{strat}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm space-y-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="font-black text-slate-800 text-base md:text-lg">Media & Iklan Kompetitor</h3>
+                    <p className="text-[10px] md:text-xs text-slate-500">Pencatatan baliho, spanduk, brosur, atau iklan digital kompetitor.</p>
+                  </div>
+                  <button onClick={() => handleOpenModal('addMedia')} className="bg-red-600 hover:bg-red-700 text-white text-[10px] md:text-xs font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-md">
+                    <IconPlus/> Lapor Media Baru
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {competitorMedia.map(cm => (
+                    <div key={cm.id} className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden flex flex-col justify-between group relative animate-fadeIn">
+                      <div className="relative h-48 w-full bg-slate-200">
+                        {cm.mediaBase64 ? (
+                          <img 
+                            src={cm.mediaBase64} 
+                            alt="Media Kompetitor" 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 text-slate-400">
+                            <span className="text-[10px] font-bold">Tanpa Dokumen Foto</span>
+                          </div>
+                        )}
+                        <span className="absolute top-3 left-3 bg-red-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md shadow-sm">
+                          {cm.area}
+                        </span>
+                        <div className="absolute top-3 right-3 flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handleOpenModal('editMedia', cm)} className="p-1.5 bg-white/95 hover:bg-white rounded-lg text-blue-600 shadow-sm transition-all">
+                            <IconEdit/>
+                          </button>
+                          <button onClick={() => setDeleteConfirm({ isOpen: true, id: cm.id, type: 'competitorMedia' })} className="p-1.5 bg-white/95 hover:bg-white rounded-lg text-red-600 shadow-sm transition-all">
+                            <IconTrash/>
+                          </button>
+                        </div>
+                      </div>
+                      <div className="p-4 space-y-2 flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="flex justify-between text-[10px] text-slate-400 font-semibold">
+                            <span>{cm.tanggal}</span>
+                            <span>{cm.namaKompetitor}</span>
+                          </div>
+                          <h4 className="font-extrabold text-slate-800 text-xs md:text-sm mt-1">Produk: {cm.produk}</h4>
+                          <p className="text-xs text-slate-600 mt-2 line-clamp-3 leading-relaxed">{cm.catatan}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {competitorMedia.length === 0 && (
+                    <div className="col-span-full py-12 text-center text-slate-400 text-xs border border-dashed rounded-2xl bg-slate-50 animate-fadeIn">
+                      Belum ada pencatatan iklan atau media kompetitor. Klik tombol diatas untuk menambahkan.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      // --- VIEW: PENJUALAN ---
+      const PenjualanView = () => (
+        <div className="bg-white p-5 md:p-8 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm space-y-6 animate-fadeIn">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-lg md:text-xl font-black text-slate-800">Daftar Transaksi</h2>
+              <p className="text-[10px] md:text-xs text-slate-400">Riwayat pengantaran dan order multi-produk.</p>
+            </div>
+            <button onClick={() => handleOpenModal('addSales')} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl text-[10px] md:text-xs font-bold flex items-center gap-1 shadow-lg shadow-blue-500/15">
+              <IconPlus/> Input Nota
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {sales.map(s => (
+              <div key={s.id} className="p-4 md:p-6 bg-slate-50 rounded-2xl border border-slate-200 relative group animate-fadeIn">
+                <div className="flex justify-between border-b pb-3 mb-3">
+                  <div>
+                    <h4 className="font-extrabold text-slate-800 text-sm md:text-base">{s.namaToko}</h4>
+                    <p className="text-[10px] md:text-xs text-slate-400">{s.tanggal} • {s.area}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => handleOpenModal('editSales', s)} className="p-1.5 hover:bg-white rounded-lg text-slate-400 hover:text-blue-600"><IconEdit/></button>
+                    {currentUser?.role === 'Admin' && (
+                      <button onClick={() => setDeleteConfirm({ isOpen: true, id: s.id, type: 'sales' })} className="p-1.5 hover:bg-white rounded-lg text-slate-400 hover:text-red-600"><IconTrash/></button>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-1.5 text-xs">
+                  {s.items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between font-semibold text-slate-600">
+                      <span className="truncate max-w-[150px]">{masterProduk.find(p => p.id === item.produkId)?.nama || 'Produk'}</span>
+                      <span className="text-right">{item.qty} Pcs • {formatCurrency(item.hargaTotal)}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between font-black text-emerald-600 border-t pt-3 mt-2 text-xs md:text-sm">
+                    <span>Grand Total</span>
+                    <span>{formatCurrency(s.grandTotal)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {sales.length === 0 && <p className="text-xs text-slate-400 py-12 text-center animate-fadeIn">Belum ada nota transaksi terdaftar.</p>}
+          </div>
+        </div>
+      );
+
+      // --- VIEW: TARGET & GOALS ---
+      const TargetView = () => {
+        if (currentUser?.role !== 'Admin') {
+          return <div className="p-6 md:p-8 text-center bg-white rounded-2xl border text-xs md:text-sm animate-fadeIn">Akses Terbatas: Hanya Administrator yang dapat melihat dan mengatur target penjualan.</div>;
+        }
+        return (
+          <div className="space-y-6 md:space-y-8 animate-fadeIn">
+            {/* PENGATURAN HARI KERJA MANUAL */}
+            <div className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm space-y-4">
+              <h3 className="font-black text-slate-800 text-sm md:text-base border-b pb-4">Pengaturan Hari Kerja Bulan Ini (Manual)</h3>
+              <form onSubmit={handleSaveWorkingDays} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Hari Berjalan (Aktif)</label>
+                  <input required type="number" min="1" max={manualTotalDays} className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={manualCurrentDay} onChange={e => setManualCurrentDay(Number(e.target.value))}/>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Total Hari Bulan Ini</label>
+                  <input required type="number" min="1" className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={manualTotalDays} onChange={e => setManualTotalDays(Number(e.target.value))}/>
+                </div>
+                <button type="submit" className="w-full py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-md">Simpan Hari Kerja</button>
+              </form>
+            </div>
+
+            {/* TARGET MACRO */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+              {/* Target Omzet */}
+              <div className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm space-y-4">
+                <div className="flex justify-between items-center border-b pb-4">
+                  <h3 className="font-black text-slate-800 text-sm md:text-base">Target Omzet Keseluruhan (Value IDR)</h3>
+                  {targetValue.length === 0 && (
+                    <button onClick={() => handleOpenModal('addValue')} className="text-[10px] md:text-xs bg-emerald-50 text-emerald-600 px-2.5 py-1.5 rounded-lg font-bold hover:bg-emerald-100"><IconPlus/> Atur Target</button>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {targetValue.map(t => (
+                    <div key={t.id} className="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border border-emerald-100 animate-fadeIn">
+                      <div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Target Omzet Bulanan</span>
+                        <span className="text-lg font-black text-emerald-600">{formatCurrency(t.target)}</span>
+                      </div>
+                      <button onClick={() => handleOpenModal('editValue', t)} className="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl transition-all"><IconEdit/></button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Target EC Global */}
+              <div className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm space-y-4">
+                <div className="flex justify-between items-center border-b pb-4">
+                  <h3 className="font-black text-slate-800 text-sm md:text-base">Target EC Global (Effective Call)</h3>
+                  {targetEC.length === 0 && (
+                    <button onClick={() => handleOpenModal('addEC')} className="text-[10px] md:text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1.5 rounded-lg font-bold hover:bg-indigo-100"><IconPlus/> Atur Target EC</button>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {targetEC.map(t => (
+                    <div key={t.id} className="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border border-indigo-100 animate-fadeIn">
+                      <div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Target EC Toko Unik</span>
+                        <span className="text-lg font-black text-indigo-600">{t.target} Toko</span>
+                      </div>
+                      <button onClick={() => handleOpenModal('editEC', t)} className="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-xl transition-all"><IconEdit/></button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* TARGET SPESIFIK PRODUK */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+              {/* Target Qty */}
+              <div className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm space-y-4">
+                <div className="flex justify-between items-center border-b pb-4">
+                  <h3 className="font-black text-slate-800 text-sm md:text-base">Target Qty per Brand/Produk</h3>
+                  <button onClick={() => handleOpenModal('addQty')} className="text-[10px] md:text-xs bg-blue-50 text-blue-600 px-2.5 py-1.5 rounded-lg font-bold hover:bg-blue-100"><IconPlus/></button>
+                </div>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                  {targetQty.map(t => (
+                    <div key={t.id} className="p-3 bg-slate-50 rounded-xl flex justify-between items-center animate-fadeIn">
+                      <span className="text-xs font-bold text-slate-700 truncate max-w-[120px]">{masterProduk.find(p => p.id === t.produkId)?.nama}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black text-slate-800">{t.target} Pcs</span>
+                        <button onClick={() => handleOpenModal('editQty', t)} className="text-slate-400 hover:text-blue-600"><IconEdit/></button>
+                        <button onClick={() => setDeleteConfirm({ isOpen: true, id: t.id, type: 'targetQty' })} className="text-slate-400 hover:text-red-600"><IconTrash/></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Target EC Brand */}
+              <div className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm space-y-4">
+                <div className="flex justify-between items-center border-b pb-4">
+                  <h3 className="font-black text-slate-800 text-sm md:text-base">Target EC per Brand/Produk</h3>
+                  <button onClick={() => handleOpenModal('addECBrand')} className="text-[10px] md:text-xs bg-amber-50 text-amber-600 px-2.5 py-1.5 rounded-lg font-bold hover:bg-amber-100"><IconPlus/></button>
+                </div>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                  {targetECBrand.map(t => (
+                    <div key={t.id} className="p-3 bg-slate-50 rounded-xl flex justify-between items-center animate-fadeIn">
+                      <span className="text-xs font-bold text-slate-700 truncate max-w-[120px]">{masterProduk.find(p => p.id === t.produkId)?.nama}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black text-slate-800">{t.target} Toko</span>
+                        <button onClick={() => handleOpenModal('editECBrand', t)} className="text-slate-400 hover:text-blue-600"><IconEdit/></button>
+                        <button onClick={() => setDeleteConfirm({ isOpen: true, id: t.id, type: 'targetECBrand' })} className="text-slate-400 hover:text-red-600"><IconTrash/></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      // --- VIEW: MASTER DATA ---
+      const MasterDataView = () => {
+        if (currentUser?.role !== 'Admin') {
+          return <div className="p-6 md:p-8 text-center bg-white rounded-2xl border text-xs md:text-sm animate-fadeIn">Akses Terbatas: Hanya Admin yang diizinkan untuk mengelola katalog data master.</div>;
+        }
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 animate-fadeIn">
+            <div className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm space-y-4">
+              <div className="flex justify-between items-center border-b pb-4">
+                <h3 className="font-black text-slate-800 text-sm md:text-base">Master Catalog Produk</h3>
+                <button onClick={() => handleOpenModal('addProduk')} className="text-[10px] md:text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1.5 rounded-lg font-bold hover:bg-indigo-100"><IconPlus/></button>
+              </div>
+              <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                {masterProduk.map(p => (
+                  <div key={p.id} className="p-3 bg-slate-50 rounded-xl flex justify-between items-center animate-fadeIn">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-800">{p.nama}</h4>
+                      <p className="text-[10px] text-slate-400">{p.sku} • {formatCurrency(p.harga)}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleOpenModal('editProduk', p)} className="text-slate-400 hover:text-blue-600"><IconEdit/></button>
+                      <button onClick={() => setDeleteConfirm({ isOpen: true, id: p.id, type: 'masterProduk' })} className="text-slate-400 hover:text-red-600"><IconTrash/></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white p-5 md:p-6 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm space-y-4">
+              <div className="flex justify-between items-center border-b pb-4">
+                <h3 className="font-black text-slate-800 text-sm md:text-base">Master Wilayah / Area</h3>
+                <button onClick={() => handleOpenModal('addArea')} className="text-[10px] md:text-xs bg-emerald-50 text-emerald-600 px-2.5 py-1.5 rounded-lg font-bold hover:bg-emerald-100"><IconPlus/></button>
+              </div>
+              <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                {masterArea.map(a => (
+                  <div key={a.id} className="p-3 bg-slate-50 rounded-xl flex justify-between items-center animate-fadeIn">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-800">{a.nama}</h4>
+                      <p className="text-[10px] text-slate-400">Kode Area: {a.kode}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleOpenModal('editArea', a)} className="text-slate-400 hover:text-blue-600"><IconEdit/></button>
+                      <button onClick={() => setDeleteConfirm({ isOpen: true, id: a.id, type: 'masterArea' })} className="text-slate-400 hover:text-red-600"><IconTrash/></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      // --- JIKA USER BELUM LOGIN, TAMPILKAN HALAMAN LOGIN ---
+      if (!currentUser) {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-900 px-4 py-12 relative overflow-hidden font-sans">
+            <div className="absolute top-0 -left-4 w-96 h-96 bg-blue-600 rounded-full filter blur-3xl opacity-10 animate-pulse"></div>
+            <div className="absolute bottom-0 -right-4 w-96 h-96 bg-indigo-600 rounded-full filter blur-3xl opacity-10 animate-pulse"></div>
+            
+            {isLoading && (
+              <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center animate-fadeIn">
+                <div className="p-5 bg-slate-900 rounded-2xl flex items-center gap-3 border border-slate-800 text-white shadow-2xl">
+                  <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin-custom"></div>
+                  <span className="text-xs font-bold">Memverifikasi Sesi...</span>
+                </div>
+              </div>
+            )}
+
+            <div className="max-w-md w-full bg-slate-800/80 backdrop-blur-md p-6 md:p-10 rounded-2xl md:rounded-3xl border border-slate-700/50 shadow-2xl space-y-8 relative z-10 animate-scaleUp">
+              <div className="text-center">
+                <div className="inline-flex p-4 bg-blue-600/10 text-blue-400 rounded-3xl mb-4">
+                  <IconTrendingUp className="w-10 h-10"/>
+                </div>
+                <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">wiraniaga</h2>
+                <p className="text-xs text-slate-400 mt-2 font-medium">Sistem Monitoring Terpadu Kinerja Sales Lapangan.</p>
+              </div>
+
+              {loginError && (
+                <div className="p-3.5 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl font-semibold text-center animate-fadeIn">
+                  ⚠️ {loginError}
+                </div>
+              )}
+
+              <form onSubmit={handleLoginSubmit} className="space-y-5">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 tracking-wider uppercase">Username</label>
+                  <input 
+                    required 
+                    type="text" 
+                    value={loginUsername} 
+                    onChange={e => setLoginUsername(e.target.value)}
+                    className="w-full p-3 bg-slate-900/50 border border-slate-700 text-white rounded-xl mt-1.5 text-sm font-semibold outline-none focus:border-blue-500 transition-colors" 
+                    placeholder="Contoh: admin / sales"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 tracking-wider uppercase">Password</label>
+                  <input 
+                    required 
+                    type="password" 
+                    value={loginPassword} 
+                    onChange={e => setLoginPassword(e.target.value)}
+                    className="w-full p-3 bg-slate-900/50 border border-slate-700 text-white rounded-xl mt-1.5 text-sm font-semibold outline-none focus:border-blue-500 transition-colors" 
+                    placeholder="••••••••"
+                  />
+                </div>
+                <button type="submit" className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-blue-500/20">
+                  Autentikasi Akun
+                </button>
+              </form>
+
+              <div className="text-center text-[10px] text-slate-500 font-bold border-t border-slate-700/50 pt-6">
+                SECURED CLOUD GOOGLE SPREADSHEETS
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex h-screen overflow-hidden bg-slate-50 relative font-sans">
+          {/* Backdrop Blur saat laci sidebar aktif di mobile */}
+          {isSidebarOpen && (
+            <div 
+              onClick={() => setIsSidebarOpen(false)} 
+              className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 md:hidden transition-opacity duration-300"
+            />
+          )}
+
+          {/* Sidebar Navigation */}
+          <div className={`fixed inset-y-0 left-0 z-50 w-60 bg-slate-900 text-white flex flex-col justify-between transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div>
+              <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+                <div className="flex items-center gap-2 text-blue-400">
+                  <span className="text-lg font-black tracking-tight text-white">wiraniaga</span>
+                </div>
+                <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-1 bg-slate-800 rounded-lg text-slate-400 hover:text-white"><IconX/></button>
+              </div>
+
+              {/* Informasi Akun */}
+              <div className="mx-4 mt-4 p-3 bg-slate-800/50 rounded-xl border border-slate-800/85 font-medium">
+                <p className="text-[11px] text-slate-300 leading-tight">{currentUser.nama}</p>
+                <span className="inline-block bg-blue-600/10 text-blue-400 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md mt-1.5">{currentUser.role}</span>
+              </div>
+
+              <nav className="p-4 space-y-1">
+                <button onClick={() => handleTabClick('dashboard')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+                  <IconDashboard/> Dashboard Utama
+                </button>
+                <button onClick={() => handleTabClick('komparasi')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'komparasi' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+                  <IconCalendar/> Analisis Komparasi
+                </button>
+                <button onClick={() => handleTabClick('intel')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'intel' ? 'bg-red-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+                  <IconIntel/> Market Intel
+                </button>
+                <button onClick={() => handleTabClick('penjualan')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'penjualan' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+                  <IconCart/> Data Penjualan
+                </button>
+                {currentUser?.role === 'Admin' && (
+                  <>
+                    <button onClick={() => handleTabClick('target')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'target' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+                      <IconTarget/> Target & Goals
+                    </button>
+                    <button onClick={() => handleTabClick('master')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'master' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+                      <IconDatabase/> Master Data
+                    </button>
+                  </>
+                )}
+              </nav>
+            </div>
+
+            {/* Tombol Logout */}
+            <div className="p-4 border-t border-slate-800 space-y-3">
+              <button onClick={() => setLogoutConfirm(true)} className="w-full flex items-center gap-3 px-4 py-2.5 bg-red-600/10 hover:bg-red-600 text-red-400 hover:text-white rounded-xl text-xs font-bold transition-all"><IconLogout/> Logout Sesi</button>
+              <div className="text-center text-[9px] font-bold text-slate-500">Connected to Sheet</div>
+            </div>
+          </div>
+
+          {/* Main Workspace Area */}
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+            {/* Topbar mobile */}
+            <div className="flex items-center justify-between p-4 bg-slate-900 text-white md:hidden z-30">
+              <span className="text-base font-black tracking-tight text-white">wiraniaga</span>
+              <button onClick={() => setIsSidebarOpen(true)} className="p-1.5 bg-slate-800 rounded-lg text-slate-300 hover:text-white"><IconMenu/></button>
+            </div>
+
+            {/* Loading Indicator */}
+            {isLoading && (
+              <div className="absolute inset-0 bg-white/70 backdrop-blur-sm z-40 flex items-center justify-center animate-fadeIn">
+                <div className="p-4 bg-slate-900 text-white rounded-2xl flex items-center gap-3 shadow-xl">
+                  <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin-custom"></div>
+                  <span className="text-xs font-bold">Sinkronisasi Google Sheet...</span>
+                </div>
+              </div>
+            )}
+
+            {/* Konten Utama */}
+            <div className="flex-1 overflow-y-auto p-4 md:p-10">
+              <header className="mb-6 md:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
+                <div>
+                  <h1 className="text-xl md:text-2xl font-black text-slate-800 capitalize">
+                    {activeTab === 'komparasi' ? 'Analisis Komparasi' : activeTab} Panel
+                  </h1>
+                  <p className="text-[10px] md:text-xs text-slate-400 mt-1">Sistem Evaluasi Target Harian Terintegrasi</p>
+                </div>
+                <div className="text-left sm:text-right">
+                  <p className="text-[10px] font-bold text-slate-400">Periode Aktif</p>
+                  <p className="text-xs md:text-sm font-black text-slate-800">{activePeriodName}</p>
+                </div>
+              </header>
+
+              {activeTab === 'dashboard' && <DashboardView />}
+              {activeTab === 'komparasi' && <AnalisisKomparasiView />}
+              {activeTab === 'intel' && <MarketIntelView />}
+              {activeTab === 'penjualan' && <PenjualanView />}
+              {activeTab === 'target' && <TargetView />}
+              {activeTab === 'master' && <MasterDataView />}
+            </div>
+          </div>
+
+          {}
+          {isModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+              <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]">
+                <div className="p-4 md:p-6 border-b flex justify-between items-center">
+                  <h3 className="font-black text-slate-800 text-xs md:text-sm capitalize">Formulir {modalType}</h3>
+                  <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-slate-100 rounded-full"><IconX/></button>
+                </div>
+
+                {modalType.includes('Sales') && (
+                  <SalesForm 
+                    currentItem={currentItem} 
+                    setCurrentItem={setCurrentItem} 
+                    masterArea={masterArea} 
+                    masterProduk={masterProduk} 
+                    updateSalesItem={updateSalesItem} 
+                    addSalesItem={addSalesItem} 
+                    removeSalesItem={removeSalesItem} 
+                    handleSave={handleSave} 
+                  />
+                )}
+
+                {(modalType === 'addQty' || modalType === 'editQty') && (
+                  <form onSubmit={handleSave} className="p-4 md:p-6 space-y-4">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400">Pilih Produk</label>
+                      <select className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.produkId} onChange={e => setCurrentItem({...currentItem, produkId: e.target.value})}>
+                        {masterProduk.map(p => <option key={p.id} value={p.id}>{p.nama}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400">Target Qty (Pcs)</label>
+                      <input required type="number" className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.target || ''} onChange={e => setCurrentItem({...currentItem, target: Number(e.target.value)})}/>
+                    </div>
+                    <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl text-xs font-bold">Simpan Target Volume</button>
+                  </form>
+                )}
+
+                {(modalType === 'addValue' || modalType === 'editValue') && (
+                  <form onSubmit={handleSave} className="p-4 md:p-6 space-y-4">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Target Omzet Bulanan (IDR)</label>
+                      <input required type="number" className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-sm font-black text-emerald-600" value={currentItem?.target || ''} onChange={e => setCurrentItem({...currentItem, target: Number(e.target.value)})}/>
+                    </div>
+                    <button type="submit" className="w-full py-3 bg-emerald-600 text-white rounded-xl text-xs font-bold">Simpan Target Omzet</button>
+                  </form>
+                )}
+
+                {(modalType === 'addEC' || modalType === 'editEC') && (
+                  <form onSubmit={handleSave} className="p-4 md:p-6 space-y-4">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Target Effective Call Toko Unik</label>
+                      <input required type="number" className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-sm font-black text-indigo-600" value={currentItem?.target || ''} onChange={e => setCurrentItem({...currentItem, target: Number(e.target.value)})}/>
+                    </div>
+                    <button type="submit" className="w-full py-3 bg-indigo-600 text-white rounded-xl text-xs font-bold">Simpan Target EC</button>
+                  </form>
+                )}
+
+                {(modalType === 'addECBrand' || modalType === 'editECBrand') && (
+                  <form onSubmit={handleSave} className="p-4 md:p-6 space-y-4">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400">Pilih Produk</label>
+                      <select className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.produkId} onChange={e => setCurrentItem({...currentItem, produkId: e.target.value})}>
+                        {masterProduk.map(p => <option key={p.id} value={p.id}>{p.nama}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400">Target EC Toko (Berapa Toko Unik Terbeli)</label>
+                      <input required type="number" className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.target || ''} onChange={e => setCurrentItem({...currentItem, target: Number(e.target.value)})}/>
+                    </div>
+                    <button type="submit" className="w-full py-3 bg-amber-500 text-white rounded-xl text-xs font-bold">Simpan Target EC Brand</button>
+                  </form>
+                )}
+
+                {modalType === 'addComp' && (
+                  <form onSubmit={handleSave} className="p-4 md:p-6 space-y-4">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400">Nama Kompetitor</label>
+                      <input required className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.namaKompetitor || ''} onChange={e => setCurrentItem({...currentItem, namaKompetitor: e.target.value})} placeholder="Nama Brand/Pesaing"/>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400">Wilayah Pantauan</label>
+                        <select className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.area || ''} onChange={e => setCurrentItem({...currentItem, area: e.target.value})}>
+                          {masterArea.map(a => <option key={a.id} value={a.nama}>{a.nama}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400">Produk Terdampak</label>
+                        <select className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.produkTerdampakId || ''} onChange={e => setCurrentItem({...currentItem, produkTerdampakId: e.target.value})}>
+                          {masterProduk.map(p => <option key={p.id} value={p.id}>{p.nama}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400">Program Promo Kompetitor</label>
+                      <textarea required className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.programPromo || ''} onChange={e => setCurrentItem({...currentItem, programPromo: e.target.value})} rows="3" placeholder="Diskon, hadiah langsung dll"></textarea>
+                    </div>
+                    <button type="submit" className="w-full py-3 bg-red-600 text-white rounded-xl text-xs font-bold">Kirim Laporan</button>
+                  </form>
+                )}
+
+                {modalType.includes('Media') && (
+                  <form onSubmit={handleSave} className="p-4 md:p-6 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400">Tanggal Temuan</label>
+                        <input required type="date" className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.tanggal || ''} onChange={e => setCurrentItem({...currentItem, tanggal: e.target.value})}/>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400">Nama Kompetitor</label>
+                        <input required className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.namaKompetitor || ''} onChange={e => setCurrentItem({...currentItem, namaKompetitor: e.target.value})} placeholder="Nama Brand/Pesaing"/>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400">Wilayah Temuan</label>
+                        <select className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.area || ''} onChange={e => setCurrentItem({...currentItem, area: e.target.value})}>
+                          {masterArea.map(a => <option key={a.id} value={a.nama}>{a.nama}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400">Nama Produk Kompetitor</label>
+                        <input required className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.produk || ''} onChange={e => setCurrentItem({...currentItem, produk: e.target.value})} placeholder="Contoh: Kopi Bubuk X"/>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 block">Unggah Foto Media/Iklan</label>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="w-full p-2 bg-slate-50 border border-dashed border-slate-300 rounded-xl mt-1 text-xs font-semibold"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            setIsLoading(true);
+                            const reader = new FileReader();
+                            reader.readAsDataURL(file);
+                            reader.onload = (event) => {
+                              const img = new Image();
+                              img.src = event.target.result;
+                              img.onload = () => {
+                                const canvas = document.createElement('canvas');
+                                const max_width = 600;
+                                const scale = max_width / img.width;
+                                if (img.width > max_width) {
+                                  canvas.width = max_width;
+                                  canvas.height = img.height * scale;
+                                } else {
+                                  canvas.width = img.width;
+                                  canvas.height = img.height;
+                                }
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                                
+                                setCurrentItem({ ...currentItem, mediaBase64: compressedBase64 });
+                                setIsLoading(false);
+                                showNotification("Selesai", "Foto berhasil dikompresi & dimuat.", "success");
+                              };
+                            };
+                          }
+                        }}
+                      />
+                      {currentItem?.mediaBase64 && (
+                        <div className="mt-2 relative rounded-xl overflow-hidden border h-32 w-full bg-slate-100">
+                          <img src={currentItem.mediaBase64} alt="Pratinjau Foto" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400">Catatan Detail Iklan</label>
+                      <textarea required className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.catatan || ''} onChange={e => setCurrentItem({...currentItem, catatan: e.target.value})} rows="3" placeholder="Deskripsikan media yang dipasang serta isi pesannya"></textarea>
+                    </div>
+                    <button type="submit" className="w-full py-3 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700">Simpan Pencatatan Media</button>
+                  </form>
+                )}
+
+                {modalType.includes('Produk') && (
+                  <form onSubmit={handleSave} className="p-4 md:p-6 space-y-4">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400">Nama Produk</label>
+                      <input required className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.nama || ''} onChange={e => setCurrentItem({...currentItem, nama: e.target.value})} placeholder="Contoh: Kopi Bubuk Super"/>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400">Kode SKU</label>
+                        <input required className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.sku || ''} onChange={e => setCurrentItem({...currentItem, sku: e.target.value})} placeholder="SKU-XXX"/>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400">Harga Satuan (IDR)</label>
+                        <input required type="number" className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.harga || ''} onChange={e => setCurrentItem({...currentItem, harga: Number(e.target.value)})}/>
+                      </div>
+                    </div>
+                    <button type="submit" className="w-full py-3 bg-indigo-600 text-white rounded-xl text-xs font-bold">Simpan Produk</button>
+                  </form>
+                )}
+
+                {modalType.includes('Area') && (
+                  <form onSubmit={handleSave} className="p-4 md:p-6 space-y-4">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400">Nama Wilayah / Area</label>
+                      <input required className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.nama || ''} onChange={e => setCurrentItem({...currentItem, nama: e.target.value})} placeholder="Contoh: Depok"/>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400">Kode Wilayah</label>
+                      <input required className="w-full p-2.5 bg-slate-50 border rounded-xl mt-1 text-xs font-bold" value={currentItem?.kode || ''} onChange={e => setCurrentItem({...currentItem, kode: e.target.value})} placeholder="DPK-01"/>
+                    </div>
+                    <button type="submit" className="w-full py-3 bg-emerald-600 text-white rounded-xl text-xs font-bold">Simpan Area</button>
+                  </form>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Secure Confirmation Dialog */}
+          {deleteConfirm.isOpen && (
+            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl">
+                <h3 className="text-base md:text-lg font-black text-slate-800">Yakin Hapus Data?</h3>
+                <p className="text-slate-400 text-[11px] md:text-xs mt-2 mb-6">Tindakan ini permanen dan akan langsung diperbarui ke database Google Sheet Anda.</p>
+                <div className="flex gap-3">
+                  <button onClick={() => setDeleteConfirm({ isOpen: false, id: null, type: '' })} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-xs">Batal</button>
+                  <button onClick={confirmDeleteAction} className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs">Ya, Hapus</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Logout Confirmation Dialog */}
+          {logoutConfirm && (
+            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl">
+                <h3 className="text-base md:text-lg font-black text-slate-800">Konfirmasi Keluar</h3>
+                <p className="text-slate-400 text-[11px] md:text-xs mt-2 mb-6">Apakah Anda yakin ingin mengakhiri sesi kerja Anda saat ini?</p>
+                <div className="flex gap-3">
+                  <button onClick={() => setLogoutConfirm(false)} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-xs">Batal</button>
+                  <button onClick={handleLogout} className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs">Ya, Keluar</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Secure Custom Toast Notifications */}
+          {customNotification.isOpen && (
+            <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white border border-slate-800 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-fadeIn max-w-[280px] md:max-w-md">
+              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${customNotification.type === 'error' ? 'bg-red-500' : customNotification.type === 'success' ? 'bg-emerald-500' : 'bg-blue-500'}`}></div>
+              <div className="min-w-0 flex-1">
+                <h4 className="text-xs font-bold truncate">{customNotification.title}</h4>
+                <p className="text-[9px] md:text-[10px] text-slate-400 mt-0.5 leading-snug">{customNotification.message}</p>
+              </div>
+              <button onClick={() => setCustomNotification({ ...customNotification, isOpen: false })} className="text-slate-500 hover:text-white text-xs font-bold pl-2">×</button>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
